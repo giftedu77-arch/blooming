@@ -3,6 +3,7 @@
     "name": "블루밍",
     "description": "SEA:ON이 만든 해양 환경 실천 리워드 앱 — 바다를 다시 켜다.",
     "icon": "./assets/seaon-logo.png",
+    "web": { "favicon": "./assets/seaon-logo.png" },
     "slug": "blooming-ocean-clean",
     "scheme": "blooming-clean",
     "experiments": {
