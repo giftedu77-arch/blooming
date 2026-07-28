@@ -2,6 +2,7 @@ node_modules/
 .expo/
 dist-android/
 dist-web/
+dist-web-pages/
 expo-server.log
 web-server.log
 .DS_Store
