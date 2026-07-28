@@ -1,5 +1,5 @@
 import { Reward, User } from '@/types/domain';
-export const currentUser: User = { id:'me', nickname:'바다지킴이', points:2450, rank:3, level:3 };
+export const currentUser: User = { id:'me', nickname:'바다지킴이', points:10000, rank:3, level:3 };
 export const leaderboard = [{ name:'김해OO', points:10800 }, { name:'박지O', points:10300 }, { name:'바다지킴이', points:10000 }];
 export const storeRewards: Reward[] = [
   { id:'1', name:'구글 플레이스토어 게임 할인팩', description:'인기 게임 할인 혜택을 받아보세요', requiredPoints:3000, icon:'🎮' },
