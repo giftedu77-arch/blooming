@@ -57,7 +57,10 @@ export default function Home() {
     ? <HomePage points={points} processing={processing} last={last} onCertify={startCertification} />
     : <SubPage page={page} points={points} activities={activities} onBack={() => setPage('home')} onExchange={(name, required) => required <= points ? Alert.alert('교환 신청 완료', `${name} 교환 신청이 접수되었습니다.`) : Alert.alert('포인트 부족', `${(required - points).toLocaleString()}P가 더 필요합니다.`)} />;
 
-  return <SafeAreaView style={s.safe}><StatusBar barStyle="dark-content" />
+  const isWeb = Platform.OS === 'web';
+  const frameStyle = isWeb ? { flex:1, backgroundColor:'#D8ECEB', alignItems:'center' as const, paddingVertical:20 } : { flex:1 };
+  const appStyle = isWeb ? [s.safe, { width:430, maxWidth:'100%' as const, shadowColor:'#195B62', shadowOpacity:.22, shadowRadius:24, elevation:8, overflow:'hidden' as const, borderRadius:28 }] : s.safe;
+  return <View style={frameStyle}><SafeAreaView style={appStyle}><StatusBar barStyle="dark-content" />
     {content}
     <Pressable style={s.menuButton} onPress={() => setMenu(true)}><Ionicons name="menu" size={23} color="#0B5B70" /></Pressable>
     <Modal visible={menu} animationType="slide" transparent><Pressable style={s.dim} onPress={() => setMenu(false)}><Pressable style={s.drawer} onPress={event => event.stopPropagation()}>
@@ -66,7 +69,7 @@ export default function Home() {
       <Text style={s.drawerFooter}>바다를 다시 켜다.</Text>
     </Pressable></Pressable></Modal>
     <Modal visible={cameraOpen} animationType="slide"><View style={s.cameraWrap}><CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" /><View style={s.cameraShade}/><View style={s.cameraOverlay}><Pressable style={s.closeCamera} onPress={() => setCameraOpen(false)}><Ionicons name="close" size={28} color="white"/></Pressable><View style={s.cameraHint}><Text style={s.cameraTitle}>쓰레기를 중앙에 맞춰 주세요</Text><Text style={s.cameraHelp}>사진 한 장으로 인증이 완료돼요</Text></View><Pressable style={s.shutter} onPress={capturePhoto}><View style={s.shutterInner}/></Pressable></View></View></Modal>
-  </SafeAreaView>;
+  </SafeAreaView></View>;
 }
 
 function HomePage({ points, processing, last, onCertify }: {points:number; processing:boolean; last:{type:TrashType;points:number}|null; onCertify:()=>void}) {
