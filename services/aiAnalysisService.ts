@@ -1,6 +1,6 @@
 import { TrashType } from '@/types/domain';
 const choices: TrashType[] = ['plastic', 'can', 'glass', 'vinyl', 'styrofoam', 'fishing_net'];
-export async function analyzeTrashVideo(_uri: string): Promise<{ trashType: TrashType; confidence: number }> {
+export async function analyzeTrashImage(_uri: string): Promise<{ trashType: TrashType; confidence: number }> {
   await new Promise(resolve => setTimeout(resolve, 1400));
   return { trashType: choices[Math.floor(Math.random() * choices.length)], confidence: 0.86 + Math.random() * 0.12 };
 }
