@@ -7,7 +7,7 @@
       "baseUrl": "/blooming"
     },
     "plugins": [
-      ["expo-image-picker", { "cameraPermission": "쓰레기 인증 영상을 촬영하기 위해 카메라 접근이 필요합니다.", "photosPermission": "촬영한 인증 영상을 확인하기 위해 사진 접근이 필요합니다." }],
+      ["expo-camera", { "cameraPermission": "쓰레기 인증 사진을 촬영하기 위해 카메라 접근이 필요합니다." }],
       "expo-router"
     ],
     "android": { "package": "com.busan.oceanclean" },
