@@ -8,6 +8,7 @@ import { analyzeTrashImage, calculateReward, labels } from '@/services/aiAnalysi
 import { TrashType } from '@/types/domain';
 
 type Page = 'home' | 'points' | 'guide' | 'store' | 'history' | 'settings';
+type Activity = { id:string; imageUri:string; type:TrashType; points:number; createdAt:Date };
 const logo = require('../assets/seaon-logo.png');
 const font = Platform.select({ ios: 'Avenir Next', android: 'sans-serif', web: 'Pretendard, "Noto Sans KR", system-ui' });
 const guides = [
@@ -24,6 +25,7 @@ export default function Home() {
   const [points, setPoints] = useState(currentUser.points);
   const [processing, setProcessing] = useState(false);
   const [last, setLast] = useState<{type:TrashType; points:number} | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -45,6 +47,7 @@ export default function Home() {
       const earned = calculateReward(result.trashType);
       setPoints(value => value + earned);
       setLast({ type: result.trashType, points: earned });
+      setActivities(items => [{ id: `${Date.now()}`, imageUri:image.uri, type:result.trashType, points:earned, createdAt:new Date() }, ...items]);
       Alert.alert('인증 완료!', `${labels[result.trashType]}을(를) 확인했어요.\n${earned}P가 지급되었습니다.`);
     } catch {
       Alert.alert('촬영 오류', '사진을 촬영하지 못했습니다. 카메라 권한을 확인한 뒤 다시 시도해 주세요.');
@@ -52,7 +55,7 @@ export default function Home() {
   }
   const content = page === 'home'
     ? <HomePage points={points} processing={processing} last={last} onCertify={startCertification} />
-    : <SubPage page={page} points={points} onBack={() => setPage('home')} onExchange={(name, required) => required <= points ? Alert.alert('교환 신청 완료', `${name} 교환 신청이 접수되었습니다.`) : Alert.alert('포인트 부족', `${(required - points).toLocaleString()}P가 더 필요합니다.`)} />;
+    : <SubPage page={page} points={points} activities={activities} onBack={() => setPage('home')} onExchange={(name, required) => required <= points ? Alert.alert('교환 신청 완료', `${name} 교환 신청이 접수되었습니다.`) : Alert.alert('포인트 부족', `${(required - points).toLocaleString()}P가 더 필요합니다.`)} />;
 
   return <SafeAreaView style={s.safe}><StatusBar barStyle="dark-content" />
     {content}
@@ -78,13 +81,13 @@ function HomePage({ points, processing, last, onCertify }: {points:number; proce
   </View></ScrollView>;
 }
 
-function SubPage({ page, points, onBack, onExchange }: {page:Page;points:number;onBack:()=>void;onExchange:(name:string, points:number)=>void}) {
+function SubPage({ page, points, activities, onBack, onExchange }: {page:Page;points:number;activities:Activity[];onBack:()=>void;onExchange:(name:string, points:number)=>void}) {
   const title = ({points:'내 포인트',guide:'분리배출 가이드',store:'포인트 사용처',history:'나의 환경 활동 기록',settings:'설정'} as Record<string,string>)[page];
   return <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.sub}><Pressable onPress={onBack} style={s.back}><Ionicons name="arrow-back" size={23} color="#0B5B70"/></Pressable><Text style={s.subKicker}>SEA:ON · BLOOMING</Text><Text style={s.subTitle}>{title}</Text>
     {page === 'points' && <><View style={s.bigPoint}><Text style={s.bigPointLabel}>현재 보유 포인트</Text><Text style={s.bigPointText}>{points.toLocaleString()}P</Text><Text style={s.bigPointDesc}>깨끗한 바다를 위한 나의 실천</Text></View><Stat icon="trophy-outline" label="현재 바다 지킴이 등급" value="Lv. 3 · 파도 수호자"/><Stat icon="leaf-outline" label="누적 획득 포인트" value="13,500P"/><Stat icon="water-outline" label="환경 기여" value="해양 쓰레기 5kg 감소"/></>}
     {page === 'guide' && guides.map(guide => <View style={s.guide} key={guide.title}><View style={[s.guideIconWrap,{backgroundColor:guide.color}]}><Text style={s.guideIcon}>{guide.icon}</Text></View><View style={s.guideBody}><View style={s.guideTitleRow}><Text style={s.guideTitle}>{guide.title}</Text><Text style={[s.guideTag,{color:guide.color}]}>{guide.title === '일반 쓰레기' ? '100P' : guide.title === '플라스틱' || guide.title === '비닐' ? '300P' : '500P'}</Text></View><Text style={s.guideText}>{guide.text}</Text><View style={s.guideSteps}>{guide.steps.map((step,index) => <View key={step} style={s.guideStep}><Text style={[s.stepNumber,{backgroundColor:guide.color}]}>{index + 1}</Text><Text style={s.stepText}>{step}</Text></View>)}</View></View></View>)}
     {page === 'store' && <><Text style={s.storeLead}>모은 포인트로 작은 즐거움을{`\n`}교환해 보세요.</Text>{storeRewards.map(reward => <View style={s.reward}><View style={s.rewardIconWrap}><Text style={s.rewardLargeIcon}>{reward.icon}</Text></View><View style={s.rewardBody}><Text style={s.guideTitle}>{reward.name}</Text><Text style={s.guideText}>{reward.description}</Text><Text style={s.required}>{reward.requiredPoints.toLocaleString()}P 필요</Text></View><Pressable style={s.exchange} onPress={() => onExchange(reward.name, reward.requiredPoints)}><Text style={s.exchangeText}>교환</Text></Pressable></View>)}</>}
-    {page === 'history' && <Empty icon="🌊" title="첫 바다 정화를 시작해 보세요" text="인증이 완료되면 나의 활동 기록이 여기에 쌓입니다."/>}
+    {page === 'history' && (activities.length === 0 ? <Empty icon="🌊" title="첫 바다 정화를 시작해 보세요" text="인증이 완료되면 나의 활동 기록이 여기에 쌓입니다."/> : <><Text style={s.storeLead}>사진으로 남긴 나의{`\n`}바다 지킴이 활동이에요.</Text>{activities.map(activity => <View key={activity.id} style={[s.reward,{padding:12}]}><Image source={{uri:activity.imageUri}} style={{width:78,height:78,borderRadius:17,backgroundColor:'#E6F7F4'}}/><View style={[s.rewardBody,{marginLeft:13}]}><Text style={s.guideTitle}>{labels[activity.type]} 인증 완료</Text><Text style={s.guideText}>{activity.createdAt.toLocaleDateString('ko-KR')} · 사진 인증</Text><Text style={s.required}>+{activity.points.toLocaleString()}P 지급</Text></View><Ionicons name="checkmark-circle" size={23} color="#18A789"/></View>)}</>)}
     {page === 'settings' && <Empty icon="⚙️" title="알림 및 계정 설정" text="서비스 설정은 다음 업데이트에서 제공됩니다."/>}
   </ScrollView>;
 }
