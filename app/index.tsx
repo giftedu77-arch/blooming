@@ -8,9 +8,14 @@ import { analyzeTrashImage, calculateReward, labels } from '@/services/aiAnalysi
 import { TrashType } from '@/types/domain';
 
 type Page = 'home' | 'points' | 'guide' | 'store' | 'history' | 'settings';
-type Activity = { id:string; imageUri:string; type:TrashType; points:number; createdAt:Date };
+type Activity = { id:string; imageUri:string; fingerprint:string; type:TrashType; points:number; createdAt:Date };
 const logo = require('../assets/seaon-logo.png');
 const font = Platform.select({ ios: 'Avenir Next', android: 'sans-serif', web: 'Pretendard, "Noto Sans KR", system-ui' });
+const makeImageFingerprint = (value: string) => {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index += 97) hash = (hash * 33) ^ value.charCodeAt(index);
+  return `${value.length}-${hash >>> 0}`;
+};
 const onboarding = [
   { icon:'🌊', title:'바다를 다시 켜는\n작은 실천', text:'블루밍과 함께 해양 쓰레기를\n사진으로 간편하게 인증해요.' },
   { icon:'📸', title:'사진 한 장으로\n쓰레기 인증', text:'수거한 쓰레기를 촬영하면\n종류별 포인트가 지급돼요.' },
@@ -47,14 +52,19 @@ export default function Home() {
   async function capturePhoto() {
     if (!cameraRef.current) return;
     try {
-      const image = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      const image = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
       setCameraOpen(false);
+      const fingerprint = makeImageFingerprint(image.base64 ?? image.uri);
+      if (activities.some(activity => activity.fingerprint === fingerprint)) {
+        Alert.alert('중복 사진', '이미 인증한 사진입니다. 같은 사진으로는 포인트를 다시 받을 수 없어요.');
+        return;
+      }
       setProcessing(true);
       const result = await analyzeTrashImage(image.uri);
       const earned = calculateReward(result.trashType);
       setPoints(value => value + earned);
       setLast({ type: result.trashType, points: earned });
-      setActivities(items => [{ id: `${Date.now()}`, imageUri:image.uri, type:result.trashType, points:earned, createdAt:new Date() }, ...items]);
+      setActivities(items => [{ id: `${Date.now()}`, imageUri:image.uri, fingerprint, type:result.trashType, points:earned, createdAt:new Date() }, ...items]);
       Alert.alert('인증 완료!', `${labels[result.trashType]}을(를) 확인했어요.\n${earned}P가 지급되었습니다.`);
     } catch {
       Alert.alert('촬영 오류', '사진을 촬영하지 못했습니다. 카메라 권한을 확인한 뒤 다시 시도해 주세요.');
