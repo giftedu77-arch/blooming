@@ -96,17 +96,25 @@ export default function Home() {
       if (!file) return;
       const preview = document.createElement('video');
       preview.preload = 'metadata';
+      let submitted = false;
+      const submit = async () => {
+        if (submitted) return;
+        submitted = true;
+        setCameraOpen(false);
+        await processCertification(preview.src, `${file.name}-${file.size}-${file.lastModified}`, 'video');
+      };
       preview.onloadedmetadata = async () => {
         if (preview.duration > 15.2) {
+          submitted = true;
           URL.revokeObjectURL(preview.src);
           Alert.alert('영상 길이 초과', '영상 인증은 최대 15초까지 가능합니다.');
           return;
         }
-        setCameraOpen(false);
-        await processCertification(preview.src, `${file.name}-${file.size}-${file.lastModified}`, 'video');
+        await submit();
       };
-      preview.onerror = () => Alert.alert('영상 확인 오류', '영상을 읽지 못했습니다. 다른 영상으로 다시 시도해 주세요.');
+      preview.onerror = () => submit();
       preview.src = URL.createObjectURL(file);
+      window.setTimeout(() => submit(), 1500);
     };
     input.click();
   }
@@ -141,7 +149,7 @@ export default function Home() {
   const appStyle = isWeb ? [s.safe, { width:430, maxWidth:'100%' as const, shadowColor:'#195B62', shadowOpacity:.22, shadowRadius:24, elevation:8, overflow:'hidden' as const, borderRadius:28 }] : s.safe;
   return <View style={frameStyle}><SafeAreaView style={appStyle}><StatusBar barStyle="dark-content" />
     {content}
-    <Modal visible={processing} transparent animationType="fade"><View style={s.inspectionDim}><View style={s.inspectionCard}><View style={s.inspectionIcon}><Ionicons name="scan-outline" size={34} color="#087F8B"/></View><Text style={s.inspectionTitle}>사진을 검사하고 있어요</Text><Text style={s.inspectionText}>쓰레기 여부와 종류를 확인한 뒤{`\n`}인증 결과를 알려드릴게요.</Text><View style={s.inspectionDots}><View style={s.inspectionDot}/><View style={[s.inspectionDot,{opacity:.65}]}/><View style={[s.inspectionDot,{opacity:.32}]}/></View></View></View></Modal>
+    <Modal visible={processing} transparent animationType="fade"><View style={s.inspectionDim}><View style={s.inspectionCard}><View style={s.inspectionIcon}><Ionicons name="scan-outline" size={34} color="#087F8B"/></View><Text style={s.inspectionTitle}>인증 파일을 검사하고 있어요</Text><Text style={s.inspectionText}>쓰레기 여부와 종류를 확인한 뒤{`\n`}인증 결과를 알려드릴게요.</Text><View style={s.inspectionDots}><View style={s.inspectionDot}/><View style={[s.inspectionDot,{opacity:.65}]}/><View style={[s.inspectionDot,{opacity:.32}]}/></View></View></View></Modal>
     <Pressable style={s.menuButton} onPress={() => setMenu(true)}><Ionicons name="menu" size={23} color="#0B5B70" /></Pressable>
     <Modal visible={menu} animationType="slide" transparent><Pressable style={s.dim} onPress={() => setMenu(false)}><Pressable style={s.drawer} onPress={event => event.stopPropagation()}>
       <Image source={logo} style={s.drawerLogo}/><Text style={s.brand}>SEA:ON</Text><Text style={s.drawerIntro}>Turn on the Ocean.</Text><Text style={s.drawerProduct}>블루밍(blooming)</Text>
