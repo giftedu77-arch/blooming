@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Alert, Image, Modal, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { currentUser, leaderboard, storeRewards } from '@/data/mockData';
 import { analyzeTrashImage, calculateReward, labels } from '@/services/aiAnalysisService';
@@ -44,6 +44,7 @@ export default function Home() {
   const [showTutorial, setShowTutorial] = useState(true);
   const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
 
   async function startCertification() {
     if (!cameraPermission?.granted) {
@@ -76,14 +77,50 @@ export default function Home() {
   }
   async function capturePhoto() {
     if (!cameraRef.current) return;
-    const image = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
-    setCameraOpen(false);
-    await processCertification(image.uri, image.base64 ?? image.uri, 'photo');
+    try {
+      const image = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
+      setCameraOpen(false);
+      await processCertification(image.uri, image.base64 ?? image.uri, 'photo');
+    } catch {
+      Alert.alert('사진 촬영 오류', '사진을 촬영하지 못했습니다. 카메라 권한을 확인한 뒤 다시 시도해 주세요.');
+    }
+  }
+  function pickWebVideo() {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*';
+    input.setAttribute('capture', 'environment');
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const preview = document.createElement('video');
+      preview.preload = 'metadata';
+      preview.onloadedmetadata = async () => {
+        if (preview.duration > 15.2) {
+          URL.revokeObjectURL(preview.src);
+          Alert.alert('영상 길이 초과', '영상 인증은 최대 15초까지 가능합니다.');
+          return;
+        }
+        setCameraOpen(false);
+        await processCertification(preview.src, `${file.name}-${file.size}-${file.lastModified}`, 'video');
+      };
+      preview.onerror = () => Alert.alert('영상 확인 오류', '영상을 읽지 못했습니다. 다른 영상으로 다시 시도해 주세요.');
+      preview.src = URL.createObjectURL(file);
+    };
+    input.click();
   }
   async function toggleVideoRecording() {
     if (!cameraRef.current) return;
     if (recording) return void (await cameraRef.current.stopRecording());
     try {
+      if (!microphonePermission?.granted) {
+        const permission = await requestMicrophonePermission();
+        if (!permission.granted) {
+          Alert.alert('마이크 권한 필요', '영상 인증을 위해 마이크 접근을 허용해 주세요.');
+          return;
+        }
+      }
       setRecording(true);
       const video = await cameraRef.current.recordAsync({ maxDuration: 15 });
       setRecording(false);
@@ -112,7 +149,7 @@ export default function Home() {
       <Text style={s.drawerFooter}>바다를 다시 켜다.</Text>
     </Pressable></Pressable></Modal>
     <Modal visible={showTutorial} animationType="fade"><View style={{flex:1,backgroundColor:'#DDF4EF',padding:28,justifyContent:'space-between'}}><View style={{alignItems:'flex-end'}}><Pressable onPress={() => setShowTutorial(false)} style={{paddingVertical:9,paddingHorizontal:13}}><Text style={{fontFamily:font,fontSize:13,fontWeight:'800',color:'#5B8D8B'}}>건너뛰기</Text></Pressable></View><View style={{alignItems:'center',marginTop:-35}}><Image source={logo} style={{width:150,height:150,borderRadius:42,backgroundColor:'#E9FAF6'}}/><View style={{marginTop:34,width:82,height:7,borderRadius:4,backgroundColor:'#B9E0D8'}}><View style={{width:`${((tutorialStep + 1) / onboarding.length) * 100}%`,height:7,borderRadius:4,backgroundColor:'#087F8B'}}/></View><Text style={{fontFamily:font,textAlign:'center',fontSize:27,lineHeight:37,fontWeight:'800',color:'#0B5967',marginTop:32}}>{onboarding[tutorialStep].title}</Text><Text style={{fontFamily:font,textAlign:'center',fontSize:15,lineHeight:23,fontWeight:'600',color:'#5A8587',marginTop:15}}>{onboarding[tutorialStep].text}</Text></View><View><View style={{flexDirection:'row',justifyContent:'center',gap:7,marginBottom:20}}>{onboarding.map((_,index) => <View key={index} style={{width:index === tutorialStep ? 22 : 7,height:7,borderRadius:4,backgroundColor:index === tutorialStep ? '#087F8B' : '#B5DCD5'}}/>)}</View><Pressable onPress={() => tutorialStep === onboarding.length - 1 ? setShowTutorial(false) : setTutorialStep(step => step + 1)} style={{backgroundColor:'#087F8B',borderRadius:18,paddingVertical:18,alignItems:'center'}}><Text style={{fontFamily:font,color:'white',fontSize:16,fontWeight:'800'}}>{tutorialStep === onboarding.length - 1 ? '블루밍 시작하기' : '다음'}</Text></Pressable></View></View></Modal>
-    <Modal visible={cameraOpen} animationType="slide"><View style={s.cameraWrap}><CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" mode={certificationMode === 'photo' ? 'picture' : 'video'} mute /><View style={s.cameraShade}/><View style={s.cameraOverlay}><Pressable style={s.closeCamera} onPress={() => { if (recording) cameraRef.current?.stopRecording(); setCameraOpen(false); }}><Ionicons name="close" size={28} color="white"/></Pressable><View style={s.captureModes}><Pressable style={[s.captureMode,certificationMode === 'photo' && s.captureModeActive]} onPress={() => !recording && setCertificationMode('photo')}><Text style={[s.captureModeText,certificationMode === 'photo' && s.captureModeTextActive]}>사진 · 50%</Text></Pressable><Pressable style={[s.captureMode,certificationMode === 'video' && s.captureModeActive]} onPress={() => !recording && setCertificationMode('video')}><Text style={[s.captureModeText,certificationMode === 'video' && s.captureModeTextActive]}>영상 · 100%</Text></Pressable></View><View style={s.cameraHint}><Text style={s.cameraTitle}>쓰레기를 중앙에 맞춰 주세요</Text><Text style={s.cameraHelp}>{certificationMode === 'photo' ? '사진 인증은 기준 포인트의 50%를 받아요' : '최대 15초 영상 인증은 기준 포인트의 100%를 받아요'}</Text></View><Pressable style={[s.shutter, recording && s.recordingShutter]} onPress={certificationMode === 'photo' ? capturePhoto : toggleVideoRecording}><View style={[s.shutterInner,recording && s.recordingInner]}/></Pressable></View></View></Modal>
+    <Modal visible={cameraOpen} animationType="slide"><View style={s.cameraWrap}><CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" mode={certificationMode === 'photo' ? 'picture' : 'video'} mute={certificationMode === 'photo'} /><View style={s.cameraShade}/><View style={s.cameraOverlay}><Pressable style={s.closeCamera} onPress={() => { if (recording) cameraRef.current?.stopRecording(); setCameraOpen(false); }}><Ionicons name="close" size={28} color="white"/></Pressable><View style={s.captureModes}><Pressable style={[s.captureMode,certificationMode === 'photo' && s.captureModeActive]} onPress={() => !recording && setCertificationMode('photo')}><Text style={[s.captureModeText,certificationMode === 'photo' && s.captureModeTextActive]}>사진 · 50%</Text></Pressable><Pressable style={[s.captureMode,certificationMode === 'video' && s.captureModeActive]} onPress={() => !recording && setCertificationMode('video')}><Text style={[s.captureModeText,certificationMode === 'video' && s.captureModeTextActive]}>영상 · 100%</Text></Pressable></View><View style={s.cameraHint}><Text style={s.cameraTitle}>쓰레기를 중앙에 맞춰 주세요</Text><Text style={s.cameraHelp}>{certificationMode === 'photo' ? '사진 인증은 기준 포인트의 50%를 받아요' : Platform.OS === 'web' ? '휴대폰에서는 카메라로 최대 15초 영상을 선택할 수 있어요' : '최대 15초 영상 인증은 기준 포인트의 100%를 받아요'}</Text></View><Pressable style={[s.shutter, recording && s.recordingShutter]} onPress={certificationMode === 'photo' ? capturePhoto : Platform.OS === 'web' ? pickWebVideo : toggleVideoRecording}><View style={[s.shutterInner,recording && s.recordingInner]}/></Pressable></View></View></Modal>
   </SafeAreaView></View>;
 }
 
