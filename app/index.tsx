@@ -62,7 +62,7 @@ export default function Home() {
       setProcessing(true);
       const result = await analyzeTrashImage(image.uri);
       if (!result.isTrash) {
-        Alert.alert('인증 불가', '사진에서 쓰레기를 확인하기 어려워요. 쓰레기가 화면 가운데 잘 보이도록 다시 촬영해 주세요.');
+        Alert.alert('인증에 실패했습니다', '사진에서 쓰레기를 확인하기 어려워요. 쓰레기가 화면 가운데 잘 보이도록 다시 촬영해 주세요.');
         return;
       }
       const earned = calculateReward(result.trashType);
