@@ -11,6 +11,11 @@ type Page = 'home' | 'points' | 'guide' | 'store' | 'history' | 'settings';
 type Activity = { id:string; imageUri:string; type:TrashType; points:number; createdAt:Date };
 const logo = require('../assets/seaon-logo.png');
 const font = Platform.select({ ios: 'Avenir Next', android: 'sans-serif', web: 'Pretendard, "Noto Sans KR", system-ui' });
+const onboarding = [
+  { icon:'🌊', title:'바다를 다시 켜는\n작은 실천', text:'블루밍과 함께 해양 쓰레기를\n사진으로 간편하게 인증해요.' },
+  { icon:'📸', title:'사진 한 장으로\n쓰레기 인증', text:'수거한 쓰레기를 촬영하면\n종류별 포인트가 지급돼요.' },
+  { icon:'🎁', title:'포인트로\n즐거움을 더해요', text:'나의 환경 활동을 기록하고\n다양한 리워드로 교환해 보세요.' },
+];
 const guides = [
   { icon:'🗑️', title:'일반 쓰레기', color:'#6D7C88', text:'오염되어 재활용이 어려운 쓰레기', steps:['물기와 음식물을 제거해요','재활용 여부를 한 번 더 확인해요','종량제봉투에 담아 배출해요'] },
   { icon:'🧴', title:'플라스틱', color:'#1685B3', text:'페트병·플라스틱 용기', steps:['내용물과 물기를 비워요','라벨과 뚜껑을 분리해요','플라스틱 수거함에 넣어요'] },
@@ -27,6 +32,8 @@ export default function Home() {
   const [last, setLast] = useState<{type:TrashType; points:number} | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(true);
   const cameraRef = useRef<CameraView>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
@@ -68,6 +75,7 @@ export default function Home() {
       {([['wallet-outline','내 포인트','points'],['leaf-outline','분리배출 가이드','guide'],['gift-outline','포인트 사용처','store'],['time-outline','나의 환경 활동 기록','history'],['settings-outline','설정','settings']] as const).map(([icon,label,target]) => <Pressable key={target} style={s.nav} onPress={() => { setPage(target); setMenu(false); }}><View style={s.navIcon}><Ionicons name={icon} size={20} color="#107F89" /></View><Text style={s.navText}>{label}</Text><Ionicons name="chevron-forward" size={18} color="#9AB4B8" /></Pressable>)}
       <Text style={s.drawerFooter}>바다를 다시 켜다.</Text>
     </Pressable></Pressable></Modal>
+    <Modal visible={showTutorial} animationType="fade"><View style={{flex:1,backgroundColor:'#DDF4EF',padding:28,justifyContent:'space-between'}}><View style={{alignItems:'flex-end'}}><Pressable onPress={() => setShowTutorial(false)} style={{paddingVertical:9,paddingHorizontal:13}}><Text style={{fontFamily:font,fontSize:13,fontWeight:'800',color:'#5B8D8B'}}>건너뛰기</Text></Pressable></View><View style={{alignItems:'center',marginTop:-35}}><Image source={logo} style={{width:150,height:150,borderRadius:42,backgroundColor:'#E9FAF6'}}/><View style={{marginTop:34,width:82,height:7,borderRadius:4,backgroundColor:'#B9E0D8'}}><View style={{width:`${((tutorialStep + 1) / onboarding.length) * 100}%`,height:7,borderRadius:4,backgroundColor:'#087F8B'}}/></View><Text style={{fontFamily:font,textAlign:'center',fontSize:27,lineHeight:37,fontWeight:'800',color:'#0B5967',marginTop:32}}>{onboarding[tutorialStep].title}</Text><Text style={{fontFamily:font,textAlign:'center',fontSize:15,lineHeight:23,fontWeight:'600',color:'#5A8587',marginTop:15}}>{onboarding[tutorialStep].text}</Text></View><View><View style={{flexDirection:'row',justifyContent:'center',gap:7,marginBottom:20}}>{onboarding.map((_,index) => <View key={index} style={{width:index === tutorialStep ? 22 : 7,height:7,borderRadius:4,backgroundColor:index === tutorialStep ? '#087F8B' : '#B5DCD5'}}/>)}</View><Pressable onPress={() => tutorialStep === onboarding.length - 1 ? setShowTutorial(false) : setTutorialStep(step => step + 1)} style={{backgroundColor:'#087F8B',borderRadius:18,paddingVertical:18,alignItems:'center'}}><Text style={{fontFamily:font,color:'white',fontSize:16,fontWeight:'800'}}>{tutorialStep === onboarding.length - 1 ? '블루밍 시작하기' : '다음'}</Text></Pressable></View></View></Modal>
     <Modal visible={cameraOpen} animationType="slide"><View style={s.cameraWrap}><CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" /><View style={s.cameraShade}/><View style={s.cameraOverlay}><Pressable style={s.closeCamera} onPress={() => setCameraOpen(false)}><Ionicons name="close" size={28} color="white"/></Pressable><View style={s.cameraHint}><Text style={s.cameraTitle}>쓰레기를 중앙에 맞춰 주세요</Text><Text style={s.cameraHelp}>사진 한 장으로 인증이 완료돼요</Text></View><Pressable style={s.shutter} onPress={capturePhoto}><View style={s.shutterInner}/></Pressable></View></View></Modal>
   </SafeAreaView></View>;
 }
